@@ -1,0 +1,106 @@
+-Create MS-ResRGU-Net framework 
+net = dlnetwork;
+tempNet = imageInputLayer([300 1 1],"Name","data","Normalization","zscore");
+net = addLayers(net,tempNet);
+
+tempNet = [
+    convolution2dLayer([3 1],64,"Name","conv_3","Padding","same")
+    reluLayer("Name","relu_3")];
+net = addLayers(net,tempNet);
+
+tempNet = [
+    convolution2dLayer([5 1],64,"Name","conv_5","Padding","same")
+    reluLayer("Name","relu_5")];
+net = addLayers(net,tempNet);
+
+tempNet = [
+    convolution2dLayer([7 1],64,"Name","conv_7","Padding","same")
+    reluLayer("Name","relu_7")];
+net = addLayers(net,tempNet);
+
+tempNet = concatenationLayer(2,3,"Name","concat");
+net = addLayers(net,tempNet);
+
+tempNet = averagePooling2dLayer([2 1],"Name","avg_pool","Stride",[2 2]);
+net = addLayers(net,tempNet);
+
+tempNet = maxPooling2dLayer([2 1],"Name","max_pool","Stride",[2 2]);
+net = addLayers(net,tempNet);
+
+tempNet = depthConcatenationLayer(2,"Name","pool_concat");
+net = addLayers(net,tempNet);
+
+tempNet = [
+    convolution2dLayer([3 3],128,"Name","conv","Padding","same")
+    batchNormalizationLayer("Name","batchnorm")
+    reluLayer("Name","relu")
+    convolution2dLayer([3 3],128,"Name","conv_1","Padding","same")
+    batchNormalizationLayer("Name","batchnorm_1")];
+net = addLayers(net,tempNet);
+
+tempNet = [
+    additionLayer(2,"Name","addition")
+    reluLayer("Name","res3b_relu")];
+net = addLayers(net,tempNet);
+
+tempNet = [
+    convolution2dLayer([3 3],256,"Name","res4a_branch2a","BiasLearnRateFactor",0,"Padding",[1 1 1 1],"Stride",[2 2])
+    batchNormalizationLayer("Name","bn4a_branch2a")
+    reluLayer("Name","res4a_branch2a_relu")
+    convolution2dLayer([3 3],256,"Name","res4a_branch2b","BiasLearnRateFactor",0,"Padding",[1 1 1 1])
+    batchNormalizationLayer("Name","bn4a_branch2b")];
+net = addLayers(net,tempNet);
+
+tempNet = [
+    convolution2dLayer([1 1],256,"Name","res4a_branch1","BiasLearnRateFactor",0,"Stride",[2 2])
+    batchNormalizationLayer("Name","bn4a_branch1")];
+net = addLayers(net,tempNet);
+
+tempNet = [
+    additionLayer(2,"Name","res4a")
+    flattenLayer("Name","flatten")
+    gruLayer(300,"Name","gru_1")];
+net = addLayers(net,tempNet);
+
+tempNet = flattenLayer("Name","flatten_1");
+net = addLayers(net,tempNet);
+
+tempNet = [
+    additionLayer(2,"Name","addition_2")
+    gruLayer(300,"Name","gru")];
+net = addLayers(net,tempNet);
+
+tempNet = [
+    additionLayer(2,"Name","addition_1")
+    dropoutLayer(0.5,"Name","dropout")
+    fullyConnectedLayer(2,"Name","fc_output")
+    softmaxLayer("Name","softmax")];
+net = addLayers(net,tempNet);
+
+
+clear tempNet;
+net = connectLayers(net,"data","conv_3");
+net = connectLayers(net,"data","conv_5");
+net = connectLayers(net,"data","conv_7");
+net = connectLayers(net,"data","flatten_1");
+net = connectLayers(net,"relu_3","concat/in1");
+net = connectLayers(net,"relu_5","concat/in2");
+net = connectLayers(net,"relu_7","concat/in3");
+net = connectLayers(net,"concat","avg_pool");
+net = connectLayers(net,"concat","max_pool");
+net = connectLayers(net,"avg_pool","pool_concat/in2");
+net = connectLayers(net,"max_pool","pool_concat/in1");
+net = connectLayers(net,"pool_concat","conv");
+net = connectLayers(net,"pool_concat","addition/in1");
+net = connectLayers(net,"batchnorm_1","addition/in2");
+net = connectLayers(net,"res3b_relu","res4a_branch2a");
+net = connectLayers(net,"res3b_relu","res4a_branch1");
+net = connectLayers(net,"bn4a_branch2b","res4a/in1");
+net = connectLayers(net,"bn4a_branch1","res4a/in2");
+net = connectLayers(net,"flatten_1","addition_2/in1");
+net = connectLayers(net,"gru_1","addition_2/in2");
+net = connectLayers(net,"gru_1","addition_1/in2");
+net = connectLayers(net,"gru","addition_1/in1");
+net = initialize(net);
+
+plot(net);
